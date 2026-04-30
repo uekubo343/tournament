@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tournament-maker"
+version = "0.1.0"
+description = "Generate tournament bracket images (SVG/PNG)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "svgwrite>=1.4",
+    "cairosvg>=2.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tournament_maker"]

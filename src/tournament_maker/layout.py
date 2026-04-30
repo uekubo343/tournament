@@ -1,0 +1,247 @@
+"""
+Coordinate computation for tournament bracket layouts.
+
+MatchPos stores positions in "logical LTR space":
+  x        -- left edge of the name area for this match
+  y1       -- y-centre of team1's row
+  y2       -- y-centre of team2's row
+  conn_x   -- x where the vertical bracket connector is drawn (= x + box_width)
+  result_y -- y where the horizontal result line runs (midpoint of y1/y2)
+  mirrored -- True for right-side halves in 2-col layouts (unused in rendering now)
+
+For top_to_bottom variants the renderer swaps (x↔y) when drawing.
+For 2-col variants a vertical gap is inserted between the two halves.
+"""
+
+from dataclasses import dataclass
+from .models import BracketData
+from .style import StyleOptions
+
+
+@dataclass
+class MatchPos:
+    x: float
+    y1: float
+    y2: float
+    conn_x: float
+    result_y: float
+    mirrored: bool = False
+
+
+@dataclass
+class CanvasInfo:
+    width: float
+    height: float
+    lb_y_offset: float = 0.0  # y where the losers bracket starts (double elim)
+
+
+def col_width(style: StyleOptions) -> float:
+    return style.box_width + style.connector_length
+
+
+# ---------------------------------------------------------------------------
+# Public entry point
+# ---------------------------------------------------------------------------
+
+def compute_positions(
+    bracket: BracketData,
+    style: StyleOptions,
+    direction: str,
+) -> tuple[dict[int, MatchPos], CanvasInfo]:
+    """Return (positions_by_match_id, CanvasInfo)."""
+    two_col = direction in ("left_to_right_2col", "top_to_bottom_2col")
+    pos, canvas = _layout(bracket, style, two_col=two_col)
+
+    if direction in ("top_to_bottom", "top_to_bottom_2col"):
+        # Swap canvas dimensions; renderer will swap x↔y when drawing.
+        canvas = CanvasInfo(
+            width=canvas.height,
+            height=canvas.width,
+            lb_y_offset=canvas.lb_y_offset,
+        )
+
+    return pos, canvas
+
+
+# ---------------------------------------------------------------------------
+# Core layout: single-col and 2-col differ only in the half-gap
+# ---------------------------------------------------------------------------
+
+def _layout(
+    bracket: BracketData,
+    style: StyleOptions,
+    two_col: bool,
+) -> tuple[dict[int, MatchPos], CanvasInfo]:
+    cw = col_width(style)
+    h = style.slot_height
+    px, py = style.padding_left, style.padding_top
+    half_slots = bracket.total_slots // 2
+
+    # In 2-col mode a visible gap is inserted between the two bracket halves.
+    half_gap = style.wb_lb_gap if two_col else 0.0
+
+    positions: dict[int, MatchPos] = {}
+
+    # --- Winners bracket ---
+    _place_wb(bracket.winners_rounds, positions,
+              x0=px, y0=py, style=style,
+              half_slots=half_slots, half_gap=half_gap)
+
+    wb_height = bracket.total_slots * h + half_gap  # gap inserted once
+
+    lb_y0 = 0.0
+    lb_height = 0.0
+
+    # --- Losers bracket + Grand Final (double elim only) ---
+    if bracket.format == "double" and bracket.losers_rounds:
+        lb_y0 = py + wb_height + style.wb_lb_gap
+        _place_lb(bracket.losers_rounds, positions,
+                  x0=px, y0=lb_y0, style=style)
+        lb_slots = bracket.total_slots // 2
+        lb_height = lb_slots * h
+        lb_col_count = len(bracket.losers_rounds)
+
+        if bracket.grand_final:
+            gf_col = max(len(bracket.winners_rounds), lb_col_count)
+            gf_x = px + gf_col * cw
+            wb_fin = positions[id(bracket.winners_rounds[-1][0])]
+            lb_fin = positions[id(bracket.losers_rounds[-1][0])]
+            gf_y1 = wb_fin.result_y
+            gf_y2 = lb_fin.result_y
+            positions[id(bracket.grand_final)] = MatchPos(
+                x=gf_x, y1=gf_y1, y2=gf_y2,
+                conn_x=gf_x + style.box_width,
+                result_y=(gf_y1 + gf_y2) / 2,
+            )
+
+    # --- Canvas dimensions ---
+    wb_col_count = len(bracket.winners_rounds)
+    if bracket.format == "double":
+        n_cols = max(wb_col_count,
+                     len(bracket.losers_rounds) if bracket.losers_rounds else 0) + 1
+    else:
+        n_cols = wb_col_count
+    total_w = px + n_cols * cw + style.box_width
+    total_h = (py + wb_height
+               + (style.wb_lb_gap + lb_height if bracket.format == "double" else 0)
+               + py)
+
+    return positions, CanvasInfo(width=total_w, height=total_h, lb_y_offset=lb_y0)
+
+
+# ---------------------------------------------------------------------------
+# Slot-index → y coordinate (respects the 2-col half-gap)
+# ---------------------------------------------------------------------------
+
+def _slot_y(
+    slot_idx: int,
+    y0: float,
+    slot_h: float,
+    half_slots: int,
+    half_gap: float,
+) -> float:
+    """Centre-y of the given slot index, inserting half_gap after the upper half."""
+    base = y0 + slot_idx * slot_h + slot_h / 2
+    if slot_idx >= half_slots:
+        base += half_gap
+    return base
+
+
+def _match_ys(
+    m_idx: int,
+    y0: float,
+    style: StyleOptions,
+    half_slots: int,
+    half_gap: float,
+) -> tuple[float, float]:
+    """Return (y1, y2) for a round-0 match at position m_idx."""
+    slot1 = m_idx * 2
+    slot2 = m_idx * 2 + 1
+    y1 = _slot_y(slot1, y0, style.slot_height, half_slots, half_gap)
+    y2 = _slot_y(slot2, y0, style.slot_height, half_slots, half_gap)
+    return y1, y2
+
+
+# ---------------------------------------------------------------------------
+# Winners bracket placement
+# ---------------------------------------------------------------------------
+
+def _place_wb(
+    rounds: list,
+    out: dict,
+    x0: float,
+    y0: float,
+    style: StyleOptions,
+    half_slots: int,
+    half_gap: float,
+) -> None:
+    cw = col_width(style)
+
+    for r_idx, round_matches in enumerate(rounds):
+        x = x0 + r_idx * cw
+        for m_idx, match in enumerate(round_matches):
+            if r_idx == 0:
+                y1, y2 = _match_ys(m_idx, y0, style, half_slots, half_gap)
+            else:
+                prev = rounds[r_idx - 1]
+                p1 = out[id(prev[m_idx * 2])]
+                p2 = out[id(prev[m_idx * 2 + 1])]
+                y1, y2 = p1.result_y, p2.result_y
+
+            out[id(match)] = MatchPos(
+                x=x, y1=y1, y2=y2,
+                conn_x=x + style.box_width,
+                result_y=(y1 + y2) / 2,
+            )
+
+
+# ---------------------------------------------------------------------------
+# Losers bracket placement
+# ---------------------------------------------------------------------------
+
+def _place_lb(
+    lb_rounds: list,
+    out: dict,
+    x0: float,
+    y0: float,
+    style: StyleOptions,
+) -> None:
+    cw = col_width(style)
+    h = style.slot_height
+
+    if not lb_rounds:
+        return
+
+    # Round 0: pair up evenly
+    first = lb_rounds[0]
+    for m_idx, match in enumerate(first):
+        y1 = y0 + m_idx * 2 * h + h / 2
+        y2 = y0 + (m_idx * 2 + 1) * h + h / 2
+        out[id(match)] = MatchPos(
+            x=x0, y1=y1, y2=y2,
+            conn_x=x0 + style.box_width,
+            result_y=(y1 + y2) / 2,
+        )
+
+    for r_idx in range(1, len(lb_rounds)):
+        x = x0 + r_idx * cw
+        prev = lb_rounds[r_idx - 1]
+        curr = lb_rounds[r_idx]
+
+        for m_idx, match in enumerate(curr):
+            if len(curr) == len(prev):
+                # Intake: each curr match corresponds 1:1 with prev match
+                p = out[id(prev[m_idx])]
+                y1 = p.result_y
+                y2 = y1 + h   # WB-loser entry slot
+            else:
+                # Reduction: pair consecutive prev matches
+                p1 = out[id(prev[m_idx * 2])]
+                p2 = out[id(prev[m_idx * 2 + 1])]
+                y1, y2 = p1.result_y, p2.result_y
+
+            out[id(match)] = MatchPos(
+                x=x, y1=y1, y2=y2,
+                conn_x=x + style.box_width,
+                result_y=(y1 + y2) / 2,
+            )
