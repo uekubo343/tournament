@@ -179,6 +179,8 @@ def build_bracket(
     seeds: list | None,
     format: str,
 ) -> BracketData:
+    if format not in ("single", "double"):
+        raise ValueError(f"format must be 'single' or 'double', got {format!r}")
     n = len(teams)
     if n < 2:
         raise ValueError("Need at least 2 teams")
