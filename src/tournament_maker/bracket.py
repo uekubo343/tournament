@@ -126,6 +126,30 @@ class TournamentBracket:
             self._style.text_padding = text_padding
         return self
 
+    def set_round_labels(
+        self,
+        winners: list | None = None,
+        losers: list | None = None,
+    ) -> "TournamentBracket":
+        """ラウンドラベルのテキストをカスタマイズする。
+
+        末尾から順に対応する（例: winners=["準々決勝", "準決勝", "決勝"] の場合、
+        最後の3ラウンドにそれぞれ割り当てられる）。
+        ``show_round_labels=False`` と組み合わせることでラベルを非表示にもできる。
+
+        Parameters
+        ----------
+        winners:
+            ウィナーズブラケットのラベルリスト。
+        losers:
+            ルーザーズブラケットのラベルリスト（ダブルエリミ用）。
+        """
+        if winners is not None:
+            self._style.custom_wb_labels = list(winners)
+        if losers is not None:
+            self._style.custom_lb_labels = list(losers)
+        return self
+
     def set_team_colors(self, colors: dict) -> "TournamentBracket":
         """チームごとのボックス背景色を設定する。 ``{"チーム名": "#rrggbb"}`` 形式で渡す。"""
         self._style.team_colors = dict(colors)
@@ -141,7 +165,12 @@ class TournamentBracket:
             ``"top_to_bottom"``       Rounds go downward
             ``"top_to_bottom_2col"``  Two mirrored halves meeting at the bottom
         """
-        valid = {"left_to_right", "left_to_right_2col", "top_to_bottom", "top_to_bottom_2col"}
+        valid = {
+            "left_to_right", "left_to_right_2col",
+            "right_to_left",
+            "top_to_bottom", "top_to_bottom_2col",
+            "bottom_to_top",
+        }
         if direction not in valid:
             raise ValueError(f"direction must be one of {sorted(valid)}, got {direction!r}")
         self._direction = direction

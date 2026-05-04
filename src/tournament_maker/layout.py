@@ -52,7 +52,30 @@ def compute_positions(
     two_col = direction in ("left_to_right_2col", "top_to_bottom_2col")
     pos, canvas = _layout(bracket, style, two_col=two_col)
 
-    if direction in ("top_to_bottom", "top_to_bottom_2col"):
+    # right_to_left: mirror all x coordinates within the LTR canvas width
+    if direction == "right_to_left":
+        W = canvas.width
+        pos = {k: MatchPos(
+            x=W - v.conn_x,
+            y1=v.y1, y2=v.y2,
+            conn_x=W - v.x,
+            result_y=v.result_y,
+            mirrored=v.mirrored,
+        ) for k, v in pos.items()}
+
+    # bottom_to_top: mirror the LTR "x" axis (which TTB renderer maps to SVG-y).
+    # Use canvas.width (= LTR x-range) as the flip boundary, not canvas.height.
+    if direction == "bottom_to_top":
+        W = canvas.width
+        pos = {k: MatchPos(
+            x=W - v.conn_x,
+            y1=v.y1, y2=v.y2,
+            conn_x=W - v.x,
+            result_y=v.result_y,
+            mirrored=v.mirrored,
+        ) for k, v in pos.items()}
+
+    if direction in ("top_to_bottom", "top_to_bottom_2col", "bottom_to_top"):
         # Swap canvas dimensions; renderer will swap x↔y when drawing.
         canvas = CanvasInfo(
             width=canvas.height,

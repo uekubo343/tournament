@@ -20,11 +20,12 @@ FORMAT = "single"
 # FORMAT = "double"   # ダブルエリミネーション
 
 # --- レイアウト ---
-DIRECTION = "left_to_right"
+# DIRECTION = "left_to_right"
 # DIRECTION = "left_to_right_2col"
+# DIRECTION = "right_to_left"
 # DIRECTION = "top_to_bottom"
 # DIRECTION = "top_to_bottom_2col"
-# DIRECTION = "bottom_to_top"
+DIRECTION = "bottom_to_top"
 
 # --- スタイル設定 ---
 STYLE = dict(
@@ -52,10 +53,17 @@ STYLE = dict(
     circle_color       = "#4a90d9",
 )
 
+# --- ラウンドラベル（カスタムテキスト） ---
+# Noneのままだとデフォルト英語ラベル。リストを渡すと末尾から順に対応する。
+ROUND_LABELS_WINNERS = None
+# ROUND_LABELS_WINNERS = ["Round 1", "Round 2", "準々決勝", "準決勝", "決勝"]
+ROUND_LABELS_LOSERS = None
+# ROUND_LABELS_LOSERS = ["LB1回戦", "LB2回戦", "LB3回戦", "LB4回戦", "LB決勝"]
+
 # --- チームごとのボックス色 ---
 # TEAM_COLORS = {}
 TEAM_COLORS = {
-    "Alpha":   "#ffff22",   # 赤
+    "Alpha":   "#ff0000",   # 赤
     "Beta":    "#4ecdc4",   # 青緑
     "Gamma":   "#f7dc6f",   # 黄
     "Delta":   "#a29bfe",   # 紫
@@ -71,6 +79,7 @@ path = f"{OUT}/{name}.svg"
 bracket = (
     TournamentBracket(teams=TEAMS, seeds=SEEDS, format=FORMAT)
     .set_style(**STYLE)
+    .set_round_labels(winners=ROUND_LABELS_WINNERS, losers=ROUND_LABELS_LOSERS)
     .set_team_colors(TEAM_COLORS)
     .set_layout(DIRECTION)
     .render(path)

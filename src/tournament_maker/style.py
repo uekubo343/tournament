@@ -46,6 +46,8 @@ class StyleOptions:
     show_round_labels: bool = True
     round_label_color: str = "#888888"
     round_label_size: float = 11.0
+    custom_wb_labels: list = field(default_factory=list)  # 空リストのときはデフォルト英語ラベルを使用
+    custom_lb_labels: list = field(default_factory=list)
 
     # Canvas background
     bg_color: str = "#ffffff"
