@@ -63,12 +63,21 @@ class TournamentBracket:
         slot_height: float | None = None,
         box_width: float | None = None,
         connector_length: float | None = None,
+        arm_length: float | None = None,
         line_color: str | None = None,
+        line_width: float | None = None,
         bg_color: str | None = None,
         winner_color: str | None = None,
+        winner_text_color: str | None = None,
         circle_color: str | None = None,
+        circle_text_color: str | None = None,
+        circle_radius: float | None = None,
         show_round_labels: bool | None = None,
+        round_label_color: str | None = None,
+        round_label_size: float | None = None,
         name_bg_color: str | None = None,
+        text_color: str | None = None,
+        text_padding: float | None = None,
     ) -> "TournamentBracket":
         """Override style options. Returns self for chaining."""
         if highlight_winner is not None:
@@ -85,18 +94,36 @@ class TournamentBracket:
             self._style.box_width = box_width
         if connector_length is not None:
             self._style.connector_length = connector_length
+        if arm_length is not None:
+            self._style.arm_length = arm_length
         if line_color is not None:
             self._style.line_color = line_color
+        if line_width is not None:
+            self._style.line_width = line_width
         if bg_color is not None:
             self._style.bg_color = bg_color
         if winner_color is not None:
             self._style.winner_color = winner_color
+        if winner_text_color is not None:
+            self._style.winner_text_color = winner_text_color
         if circle_color is not None:
             self._style.circle_color = circle_color
+        if circle_text_color is not None:
+            self._style.circle_text_color = circle_text_color
+        if circle_radius is not None:
+            self._style.circle_radius = circle_radius
         if show_round_labels is not None:
             self._style.show_round_labels = show_round_labels
+        if round_label_color is not None:
+            self._style.round_label_color = round_label_color
+        if round_label_size is not None:
+            self._style.round_label_size = round_label_size
         if name_bg_color is not None:
             self._style.name_bg_color = name_bg_color
+        if text_color is not None:
+            self._style.text_color = text_color
+        if text_padding is not None:
+            self._style.text_padding = text_padding
         return self
 
     def set_team_colors(self, colors: dict) -> "TournamentBracket":
