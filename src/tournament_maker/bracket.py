@@ -99,6 +99,11 @@ class TournamentBracket:
             self._style.name_bg_color = name_bg_color
         return self
 
+    def set_team_colors(self, colors: dict) -> "TournamentBracket":
+        """チームごとのボックス背景色を設定する。 ``{"チーム名": "#rrggbb"}`` 形式で渡す。"""
+        self._style.team_colors = dict(colors)
+        return self
+
     def set_layout(self, direction: str = "left_to_right") -> "TournamentBracket":
         """
         Set the bracket layout direction.

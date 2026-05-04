@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 
 @dataclass
 class StyleOptions:
+    # チームごとのボックス背景色 {チーム名: 色コード}
+    team_colors: dict = field(default_factory=dict)
     # Layout dimensions
     slot_height: float = 40.0
     box_width: float = 160.0

@@ -200,13 +200,15 @@ def _name_box_h(dwg, x, y, bw, name, style, highlight, is_bye):
     bg_h = style.name_bg_height
     bg_y = y - bg_h / 2
 
+    team_color = style.team_colors.get(name)
+
     if style.circle_names and not is_bye:
         # Ellipse sized to fit the name
         cx = x + style.text_padding + len(name) * 4 + style.circle_radius
         cy = y
         rx = len(name) * 4 + style.circle_radius
         ry = style.circle_radius
-        fill = style.winner_color if highlight else style.circle_color
+        fill = style.winner_color if highlight else (team_color or style.circle_color)
         dwg.add(dwg.ellipse(center=(cx, cy), r=(rx, ry),
                              fill=fill, stroke="none"))
         dwg.add(dwg.text(name, insert=(cx, cy),
@@ -217,7 +219,7 @@ def _name_box_h(dwg, x, y, bw, name, style, highlight, is_bye):
     else:
         # Background rect
         if not is_bye:
-            bg_fill = style.winner_color if highlight else style.name_bg_color
+            bg_fill = style.winner_color if highlight else (team_color or style.name_bg_color)
             dwg.add(dwg.rect(insert=(x, bg_y), size=(bw, bg_h),
                              fill=bg_fill, rx=3, ry=3))
 
@@ -290,8 +292,10 @@ def _name_col_v(dwg, svg_x, svg_y_top, svg_y_bot, name, style, highlight, is_bye
     bg_x = svg_x - bg_w / 2
     col_h = svg_y_bot - svg_y_top
 
+    team_color = style.team_colors.get(name)
+
     if not is_bye:
-        bg_fill = style.winner_color if highlight else style.name_bg_color
+        bg_fill = style.winner_color if highlight else (team_color or style.name_bg_color)
         dwg.add(dwg.rect(insert=(bg_x, svg_y_top), size=(bg_w, col_h),
                          fill=bg_fill, rx=3, ry=3))
 
