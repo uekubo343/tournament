@@ -81,6 +81,7 @@ def _build_svg(bracket, positions, canvas, style, direction):
     is_v = direction in ("top_to_bottom", "top_to_bottom_2col", "bottom_to_top")
     is_rtl = direction == "right_to_left"
     is_btt = direction == "bottom_to_top"
+    is_face = direction == "face_to_face"
 
     dwg = svgwrite.Drawing(size=(f"{canvas.width}px", f"{canvas.height}px"))
     dwg.viewbox(0, 0, canvas.width, canvas.height)
@@ -98,7 +99,11 @@ def _build_svg(bracket, positions, canvas, style, direction):
             _round_label(dwg, positions[id(rnd[0])], wb_labels[r_idx], style, is_v, is_rtl, is_btt)
         is_last = r_idx == len(bracket.winners_rounds) - 1 and bracket.format == "single"
         for m in rnd:
-            _draw_match(dwg, m, positions[id(m)], style, is_v, is_last, is_rtl=is_rtl, is_btt=is_btt)
+            pos = positions[id(m)]
+            eff_rtl = is_rtl or pos.mirrored
+            no_conn = is_face and is_last
+            _draw_match(dwg, m, pos, style, is_v, is_last, is_rtl=eff_rtl, is_btt=is_btt,
+                        no_connector=no_conn)
 
     # Losers bracket + Grand Final
     if bracket.format == "double":
@@ -107,7 +112,8 @@ def _build_svg(bracket, positions, canvas, style, direction):
                 _round_label(dwg, positions[id(rnd[0])], lb_labels[r_idx], style, is_v, is_rtl, is_btt)
             is_last = r_idx == len(bracket.losers_rounds) - 1
             for m in rnd:
-                _draw_match(dwg, m, positions[id(m)], style, is_v, is_last, is_rtl=is_rtl, is_btt=is_btt)
+                pos = positions[id(m)]
+                _draw_match(dwg, m, pos, style, is_v, is_last, is_rtl=is_rtl, is_btt=is_btt)
 
         if bracket.grand_final:
             _draw_match(dwg, bracket.grand_final,
@@ -145,18 +151,19 @@ def _round_label(dwg, pos, text, style, is_vertical, is_rtl=False, is_btt=False)
 # Per-match dispatch
 # ---------------------------------------------------------------------------
 
-def _draw_match(dwg, match, pos, style, is_vertical, is_final=False, is_rtl=False, is_btt=False):
+def _draw_match(dwg, match, pos, style, is_vertical, is_final=False, is_rtl=False, is_btt=False,
+                no_connector=False):
     if is_vertical:
         _match_v(dwg, match, pos, style, is_final, is_btt=is_btt)
     else:
-        _match_h(dwg, match, pos, style, is_final, is_rtl=is_rtl)
+        _match_h(dwg, match, pos, style, is_final, is_rtl=is_rtl, no_connector=no_connector)
 
 
 # ---------------------------------------------------------------------------
 # Horizontal (left_to_right) match
 # ---------------------------------------------------------------------------
 
-def _match_h(dwg, match, pos, style, is_final, is_rtl=False):
+def _match_h(dwg, match, pos, style, is_final, is_rtl=False, no_connector=False):
     bw = style.box_width
     arm = style.arm_length
     conn_len = style.connector_length
@@ -192,17 +199,18 @@ def _match_h(dwg, match, pos, style, is_final, is_rtl=False):
     vc_color = style.bye_line_color if match.is_bye else style.line_color
     lw = style.line_width
 
-    # arms: box edge → arm_x
-    _line(dwg, box_edge, pos.y1, arm_x, pos.y1, t1_color, lw)
-    _line(dwg, box_edge, pos.y2, arm_x, pos.y2, t2_color, lw,
-          dashed=t2_bye)
+    if not no_connector:
+        # arms: box edge → arm_x
+        _line(dwg, box_edge, pos.y1, arm_x, pos.y1, t1_color, lw)
+        _line(dwg, box_edge, pos.y2, arm_x, pos.y2, t2_color, lw,
+              dashed=t2_bye)
 
-    # vertical connector bar
-    _line(dwg, arm_x, pos.y1, arm_x, pos.y2, vc_color, lw,
-          dashed=match.is_bye)
+        # vertical connector bar
+        _line(dwg, arm_x, pos.y1, arm_x, pos.y2, vc_color, lw,
+              dashed=match.is_bye)
 
     # result line → next round
-    if not is_final:
+    if not is_final and not no_connector:
         rc = style.winner_color if (t1_win or t2_win) else style.line_color
         _line(dwg, arm_x, pos.result_y, result_end_x, pos.result_y, rc, lw)
 

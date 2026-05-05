@@ -49,6 +49,9 @@ def compute_positions(
     direction: str,
 ) -> tuple[dict[int, MatchPos], CanvasInfo]:
     """Return (positions_by_match_id, CanvasInfo)."""
+    if direction == "face_to_face":
+        return _layout_face_to_face(bracket, style)
+
     two_col = direction in ("left_to_right_2col", "top_to_bottom_2col")
     pos, canvas = _layout(bracket, style, two_col=two_col)
 
@@ -268,3 +271,84 @@ def _place_lb(
                 conn_x=x + style.box_width,
                 result_y=(y1 + y2) / 2,
             )
+
+
+# ---------------------------------------------------------------------------
+# face_to_face layout: left half LTR, right half RTL, final in center
+# ---------------------------------------------------------------------------
+
+def _layout_face_to_face(
+    bracket: BracketData,
+    style: StyleOptions,
+) -> tuple[dict[int, MatchPos], CanvasInfo]:
+    """左半分LTR・右半分RTL・中央にファイナルを配置する対面レイアウト。"""
+    rounds = bracket.winners_rounds
+    n = len(rounds)      # 総ラウンド数
+    half = n - 1         # 片側のラウンド数（ファイナルを除く）
+
+    cw = col_width(style)
+    h = style.slot_height
+    px, py = style.padding_left, style.padding_top
+    half_slots = bracket.total_slots // 2
+
+    positions: dict[int, MatchPos] = {}
+
+    # --- 左側 (LTR) ---
+    for r_idx in range(half):
+        x = px + r_idx * cw
+        left_matches = rounds[r_idx][: len(rounds[r_idx]) // 2]
+        for m_idx, match in enumerate(left_matches):
+            if r_idx == 0:
+                y1 = py + m_idx * 2 * h + h / 2
+                y2 = py + (m_idx * 2 + 1) * h + h / 2
+            else:
+                prev_left = rounds[r_idx - 1][: len(rounds[r_idx - 1]) // 2]
+                p1 = positions[id(prev_left[m_idx * 2])]
+                p2 = positions[id(prev_left[m_idx * 2 + 1])]
+                y1, y2 = p1.result_y, p2.result_y
+            positions[id(match)] = MatchPos(
+                x=x, y1=y1, y2=y2,
+                conn_x=x + style.box_width,
+                result_y=(y1 + y2) / 2,
+                mirrored=False,
+            )
+
+    # --- 右側 (RTL) ---
+    for r_idx in range(half):
+        # r_idx=0 が最外列（最大x）、r_idx=half-1 が中央寄り
+        right_col = 2 * half - r_idx
+        x = px + right_col * cw
+        right_matches = rounds[r_idx][len(rounds[r_idx]) // 2 :]
+        for m_idx, match in enumerate(right_matches):
+            if r_idx == 0:
+                base = half_slots + m_idx * 2
+                y1 = py + base * h + h / 2
+                y2 = py + (base + 1) * h + h / 2
+            else:
+                prev_right = rounds[r_idx - 1][len(rounds[r_idx - 1]) // 2 :]
+                p1 = positions[id(prev_right[m_idx * 2])]
+                p2 = positions[id(prev_right[m_idx * 2 + 1])]
+                y1, y2 = p1.result_y, p2.result_y
+            positions[id(match)] = MatchPos(
+                x=x, y1=y1, y2=y2,
+                conn_x=x + style.box_width,
+                result_y=(y1 + y2) / 2,
+                mirrored=True,
+            )
+
+    # --- 中央ファイナル ---
+    final_match = rounds[n - 1][0]
+    final_x = px + half * cw
+    left_feeder = positions[id(rounds[half - 1][0])]
+    right_feeder = positions[id(rounds[half - 1][len(rounds[half - 1]) // 2])]
+    y1, y2 = left_feeder.result_y, right_feeder.result_y
+    positions[id(final_match)] = MatchPos(
+        x=final_x, y1=y1, y2=y2,
+        conn_x=final_x + style.box_width,
+        result_y=(y1 + y2) / 2,
+        mirrored=False,
+    )
+
+    total_w = px + 2 * half * cw + style.box_width + px
+    total_h = py + bracket.total_slots * h + py
+    return positions, CanvasInfo(width=total_w, height=total_h)

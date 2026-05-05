@@ -170,6 +170,7 @@ class TournamentBracket:
             "right_to_left",
             "top_to_bottom", "top_to_bottom_2col",
             "bottom_to_top",
+            "face_to_face",
         }
         if direction not in valid:
             raise ValueError(f"direction must be one of {sorted(valid)}, got {direction!r}")
