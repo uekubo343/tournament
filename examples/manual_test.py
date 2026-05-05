@@ -23,9 +23,9 @@ FORMAT = "single"
 # DIRECTION = "left_to_right"
 # DIRECTION = "left_to_right_2col"
 # DIRECTION = "right_to_left"
-DIRECTION = "top_to_bottom"
+# DIRECTION = "top_to_bottom"
 # DIRECTION = "top_to_bottom_2col"
-# DIRECTION = "bottom_to_top"
+DIRECTION = "bottom_to_top"
 
 # --- スタイル設定 ---
 STYLE = dict(
@@ -52,7 +52,7 @@ STYLE = dict(
     circle_names       = False,   # チーム名を楕円で表示
     circle_color       = "#4a90d9",
 
-    line_style         = False,   # Trueにするとボックスなし・勝者の線に色をつけるスタイル
+    line_style         = True,   # Trueにするとボックスなし・勝者の線に色をつけるスタイル
 )
 
 # --- ラウンドラベル（カスタムテキスト） ---

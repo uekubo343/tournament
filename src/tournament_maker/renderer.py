@@ -302,11 +302,14 @@ def _match_v(dwg, match, pos, style, is_final, is_btt=False):
     t1_bye = match.team1 == BYE
     t2_bye = match.team2 == BYE
 
+    # line_style は1回戦以降のみ適用
+    use_line = style.line_style and match.round_index > 0
+
     # ── name columns ──────────────────────────────────────────────────────
     _name_col_v(dwg, pos.y1, pos.x, pos.conn_x, match.display_team1,
-                style, highlight=t1_win, is_bye=t1_bye)
+                style, highlight=t1_win, is_bye=t1_bye, use_line=use_line, is_btt=is_btt)
     _name_col_v(dwg, pos.y2, pos.x, pos.conn_x, match.display_team2,
-                style, highlight=t2_win, is_bye=t2_bye)
+                style, highlight=t2_win, is_bye=t2_bye, use_line=use_line, is_btt=is_btt)
 
     # ── bracket lines ─────────────────────────────────────────────────────
     t1_color = style.winner_color if t1_win else (style.bye_line_color if t1_bye else style.line_color)
@@ -314,9 +317,19 @@ def _match_v(dwg, match, pos, style, is_final, is_btt=False):
     vc_color = style.bye_line_color if match.is_bye else style.line_color
     lw = style.line_width
 
-    # arms: box edge → arm_y
-    _line(dwg, pos.y1, box_edge, pos.y1, arm_y, t1_color, lw)
-    _line(dwg, pos.y2, box_edge, pos.y2, arm_y, t2_color, lw, dashed=t2_bye)
+    # use_line では前ラウンドの結果線が終わる端から名前エリアを通ってアームまで延長する
+    # TTB: 前結果はpos.xで終わる → pos.xから延長
+    # BTT: 前結果はpos.conn_xで終わる → pos.conn_xから延長
+    if use_line:
+        line_edge1 = pos.conn_x if is_btt else pos.x
+        line_edge2 = pos.conn_x if is_btt else pos.x
+    else:
+        line_edge1 = box_edge
+        line_edge2 = box_edge
+
+    # arms: (name area edge or box edge) → arm_y
+    _line(dwg, pos.y1, line_edge1, pos.y1, arm_y, t1_color, lw)
+    _line(dwg, pos.y2, line_edge2, pos.y2, arm_y, t2_color, lw, dashed=t2_bye)
 
     # horizontal connector bar at arm_y
     _line(dwg, pos.y1, arm_y, pos.y2, arm_y, vc_color, lw, dashed=match.is_bye)
@@ -327,8 +340,13 @@ def _match_v(dwg, match, pos, style, is_final, is_btt=False):
         _line(dwg, pos.result_y, arm_y, pos.result_y, result_end_y, rc, lw)
 
 
-def _name_col_v(dwg, svg_x, svg_y_top, svg_y_bot, name, style, highlight, is_bye):
+def _name_col_v(dwg, svg_x, svg_y_top, svg_y_bot, name, style, highlight, is_bye,
+                use_line=False, is_btt=False):
     """Draw a vertical team name column for TTB layout."""
+    if use_line:
+        # line_style の2回戦以降: ボックスなし・TBDも非表示
+        return
+
     bg_w = style.name_bg_height   # column pixel width (reuse same setting)
     bg_x = svg_x - bg_w / 2
     col_h = svg_y_bot - svg_y_top

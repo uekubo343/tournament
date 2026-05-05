@@ -7,10 +7,11 @@ MatchPos stores positions in "logical LTR space":
   y2       -- y-centre of team2's row
   conn_x   -- x where the vertical bracket connector is drawn (= x + box_width)
   result_y -- y where the horizontal result line runs (midpoint of y1/y2)
-  mirrored -- True for right-side halves in 2-col layouts (unused in rendering now)
+  mirrored -- True for right-side halves in face_to_face layout (renderer が RTL で描画)
 
 For top_to_bottom variants the renderer swaps (x↔y) when drawing.
 For 2-col variants a vertical gap is inserted between the two halves.
+For face_to_face layout the right half gets mirrored=True and is rendered RTL.
 """
 
 from dataclasses import dataclass
