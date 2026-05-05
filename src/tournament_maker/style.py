@@ -36,6 +36,9 @@ class StyleOptions:
     winner_color: str = "#2ecc71"
     winner_text_color: str = "#ffffff"
 
+    # Line style: チームボックスを描かず、勝者の線に色をつけるスタイル
+    line_style: bool = False
+
     # Circle names
     circle_names: bool = False
     circle_color: str = "#4a90d9"

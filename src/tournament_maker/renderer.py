@@ -187,11 +187,14 @@ def _match_h(dwg, match, pos, style, is_final, is_rtl=False, no_connector=False)
     t1_bye = match.team1 == BYE
     t2_bye = match.team2 == BYE
 
+    # line_style は1回戦以降のみ適用（1回戦は通常ボックス）
+    use_line = style.line_style and match.round_index > 0
+
     # ── name boxes ────────────────────────────────────────────────────────
     _name_box_h(dwg, pos.x, pos.y1, bw, match.display_team1,
-                style, highlight=t1_win, is_bye=t1_bye)
+                style, highlight=t1_win, is_bye=t1_bye, is_rtl=is_rtl, use_line=use_line)
     _name_box_h(dwg, pos.x, pos.y2, bw, match.display_team2,
-                style, highlight=t2_win, is_bye=t2_bye)
+                style, highlight=t2_win, is_bye=t2_bye, is_rtl=is_rtl, use_line=use_line)
 
     # ── bracket lines ─────────────────────────────────────────────────────
     t1_color = style.winner_color if t1_win else (style.bye_line_color if t1_bye else style.line_color)
@@ -199,10 +202,18 @@ def _match_h(dwg, match, pos, style, is_final, is_rtl=False, no_connector=False)
     vc_color = style.bye_line_color if match.is_bye else style.line_color
     lw = style.line_width
 
+    # use_line では名前エリアまでアームラインを延長する
+    if use_line:
+        line_start1 = pos.conn_x if is_rtl else pos.x
+        line_start2 = pos.conn_x if is_rtl else pos.x
+    else:
+        line_start1 = box_edge
+        line_start2 = box_edge
+
     if not no_connector:
-        # arms: box edge → arm_x
-        _line(dwg, box_edge, pos.y1, arm_x, pos.y1, t1_color, lw)
-        _line(dwg, box_edge, pos.y2, arm_x, pos.y2, t2_color, lw,
+        # arms: (name area start or box edge) → arm_x
+        _line(dwg, line_start1, pos.y1, arm_x, pos.y1, t1_color, lw)
+        _line(dwg, line_start2, pos.y2, arm_x, pos.y2, t2_color, lw,
               dashed=t2_bye)
 
         # vertical connector bar
@@ -215,7 +226,7 @@ def _match_h(dwg, match, pos, style, is_final, is_rtl=False, no_connector=False)
         _line(dwg, arm_x, pos.result_y, result_end_x, pos.result_y, rc, lw)
 
 
-def _name_box_h(dwg, x, y, bw, name, style, highlight, is_bye):
+def _name_box_h(dwg, x, y, bw, name, style, highlight, is_bye, is_rtl=False, use_line=False):
     """Draw team name box + text.  No horizontal line through the box."""
     bg_h = style.name_bg_height
     bg_y = y - bg_h / 2
@@ -236,6 +247,9 @@ def _name_box_h(dwg, x, y, bw, name, style, highlight, is_bye):
                          font_family=style.font_family,
                          font_size=f"{style.font_size}px",
                          fill=style.circle_text_color))
+    elif use_line:
+        # line_style の2回戦以降: ボックスなし・TBDも非表示
+        pass
     else:
         # Background rect
         if not is_bye:

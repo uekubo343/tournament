@@ -78,6 +78,7 @@ class TournamentBracket:
         name_bg_color: str | None = None,
         text_color: str | None = None,
         text_padding: float | None = None,
+        line_style: bool | None = None,
     ) -> "TournamentBracket":
         """Override style options. Returns self for chaining."""
         if highlight_winner is not None:
@@ -124,6 +125,8 @@ class TournamentBracket:
             self._style.text_color = text_color
         if text_padding is not None:
             self._style.text_padding = text_padding
+        if line_style is not None:
+            self._style.line_style = line_style
         return self
 
     def set_round_labels(

@@ -51,6 +51,8 @@ STYLE = dict(
 
     circle_names       = False,   # チーム名を楕円で表示
     circle_color       = "#4a90d9",
+
+    line_style         = False,   # Trueにするとボックスなし・勝者の線に色をつけるスタイル
 )
 
 # --- ラウンドラベル（カスタムテキスト） ---
