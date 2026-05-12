@@ -1,30 +1,31 @@
 """renderer.py のテスト（SVG出力の内容検証）"""
 
 import os
-import tempfile
 import pytest
+
 from tournament_maker import TournamentBracket
 
+IMAGES_DIR = os.path.join(os.path.dirname(__file__), "images")
 
-def _render_svg(teams, **kwargs):
-    """一時ファイルにSVGを書き出してテキストを返す"""
-    with tempfile.NamedTemporaryFile(suffix=".svg", delete=False) as f:
-        path = f.name
-    try:
-        TournamentBracket(teams=teams, **kwargs).render(path)
-        with open(path, encoding="utf-8") as f:
-            return f.read()
-    finally:
-        os.unlink(path)
+
+def _render_svg(teams, filename=None, **kwargs):
+    """tests/images にSVGを書き出してテキストを返す"""
+    os.makedirs(IMAGES_DIR, exist_ok=True)
+    if filename is None:
+        filename = "test_output.svg"
+    path = os.path.join(IMAGES_DIR, filename)
+    TournamentBracket(teams=teams, **kwargs).render(path)
+    with open(path, encoding="utf-8") as f:
+        return f.read()
 
 
 class TestSVGOutput:
     def test_svgタグが含まれる(self):
-        svg = _render_svg(["A", "B", "C", "D"])
+        svg = _render_svg(["A", "B", "C", "D"], filename="svg_tag.svg")
         assert "<svg" in svg
 
     def test_チーム名がsvgに含まれる(self):
-        svg = _render_svg(["Alpha", "Beta", "Gamma", "Delta"])
+        svg = _render_svg(["Alpha", "Beta", "Gamma", "Delta"], filename="team_names.svg")
         assert "Alpha" in svg
         assert "Beta" in svg
 
@@ -37,20 +38,21 @@ class TestSVGOutput:
         ]
         teams = ["A", "B", "C", "D", "E", "F", "G", "H"]
         for d in directions:
-            svg = _render_svg(teams, format="single")
+            svg = _render_svg(teams, filename=f"direction_{d}.svg", format="single")
             assert "<svg" in svg, f"{d} でSVGが生成されなかった"
 
     def test_シングルエリミネーション_SVG出力(self):
-        svg = _render_svg(["A", "B", "C", "D"])
+        svg = _render_svg(["A", "B", "C", "D"], filename="single_elim.svg")
         assert "svg" in svg.lower()
 
     def test_ダブルエリミネーション_SVG出力(self):
-        svg = _render_svg(["A", "B", "C", "D"], format="double")
+        svg = _render_svg(["A", "B", "C", "D"], filename="double_elim.svg", format="double")
         assert "<svg" in svg
 
     def test_シード付き_SVG出力(self):
         svg = _render_svg(
             ["A", "B", "C", "D", "E"],
+            filename="seeded.svg",
             seeds=["A", "B", "C"],
         )
         assert "<svg" in svg
@@ -67,14 +69,11 @@ class TestTournamentBracketAPI:
             TournamentBracket(teams=["A", "B"]).set_layout("diagonal")
 
     def test_render_svgはselfを返す(self):
-        with tempfile.NamedTemporaryFile(suffix=".svg", delete=False) as f:
-            path = f.name
-        try:
-            tb = TournamentBracket(teams=["A", "B", "C", "D"])
-            result = tb.render(path)
-            assert result is tb
-        finally:
-            os.unlink(path)
+        os.makedirs(IMAGES_DIR, exist_ok=True)
+        path = os.path.join(IMAGES_DIR, "render_returns_self.svg")
+        tb = TournamentBracket(teams=["A", "B", "C", "D"])
+        result = tb.render(path)
+        assert result is tb
 
     def test_set_styleのチェーン(self):
         tb = (
