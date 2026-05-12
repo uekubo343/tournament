@@ -314,7 +314,7 @@ def _layout_face_to_face(
                 mirrored=False,
             )
 
-    # --- 右側 (RTL) ---
+    # --- 右側 (RTL) --- 左側と同じ y 座標を使う（高さを揃える）
     for r_idx in range(half):
         # r_idx=0 が最外列（最大x）、r_idx=half-1 が中央寄り
         right_col = 2 * half - r_idx
@@ -322,7 +322,7 @@ def _layout_face_to_face(
         right_matches = rounds[r_idx][len(rounds[r_idx]) // 2 :]
         for m_idx, match in enumerate(right_matches):
             if r_idx == 0:
-                base = half_slots + m_idx * 2
+                base = m_idx * 2  # 左側と同じスロットを使う（half_slots のオフセットなし）
                 y1 = py + base * h + h / 2
                 y2 = py + (base + 1) * h + h / 2
             else:
@@ -338,18 +338,22 @@ def _layout_face_to_face(
             )
 
     # --- 中央ファイナル ---
+    # 左右の SF 結果は同じ y（center_y）に揃っている。
+    # ファイナルはその中心から ±h/2 の位置に 2 チームを配置し、
+    # 左右の結果線が center_y でちょうどボックス間のギャップに繋がる。
     final_match = rounds[n - 1][0]
     final_x = px + half * cw
     left_feeder = positions[id(rounds[half - 1][0])]
-    right_feeder = positions[id(rounds[half - 1][len(rounds[half - 1]) // 2])]
-    y1, y2 = left_feeder.result_y, right_feeder.result_y
+    center_y = left_feeder.result_y  # 左右 SF の result_y は同じ値
+    y1 = center_y - h / 2
+    y2 = center_y + h / 2
     positions[id(final_match)] = MatchPos(
         x=final_x, y1=y1, y2=y2,
         conn_x=final_x + style.box_width,
-        result_y=(y1 + y2) / 2,
+        result_y=center_y,
         mirrored=False,
     )
 
     total_w = px + 2 * half * cw + style.box_width + px
-    total_h = py + bracket.total_slots * h + py
+    total_h = py + half_slots * h + py  # 片側分の高さのみ
     return positions, CanvasInfo(width=total_w, height=total_h)

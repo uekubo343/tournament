@@ -25,7 +25,8 @@ FORMAT = "single"
 # DIRECTION = "right_to_left"
 # DIRECTION = "top_to_bottom"
 # DIRECTION = "top_to_bottom_2col"
-DIRECTION = "bottom_to_top"
+# DIRECTION = "bottom_to_top"
+DIRECTION = "face_to_face"
 
 # --- スタイル設定 ---
 STYLE = dict(

@@ -101,9 +101,9 @@ def _build_svg(bracket, positions, canvas, style, direction):
         for m in rnd:
             pos = positions[id(m)]
             eff_rtl = is_rtl or pos.mirrored
-            no_conn = is_face and is_last
+            face_final = is_face and is_last
             _draw_match(dwg, m, pos, style, is_v, is_last, is_rtl=eff_rtl, is_btt=is_btt,
-                        no_connector=no_conn)
+                        face_final=face_final)
 
     # Losers bracket + Grand Final
     if bracket.format == "double":
@@ -152,18 +152,19 @@ def _round_label(dwg, pos, text, style, is_vertical, is_rtl=False, is_btt=False)
 # ---------------------------------------------------------------------------
 
 def _draw_match(dwg, match, pos, style, is_vertical, is_final=False, is_rtl=False, is_btt=False,
-                no_connector=False):
+                no_connector=False, face_final=False):
     if is_vertical:
         _match_v(dwg, match, pos, style, is_final, is_btt=is_btt)
     else:
-        _match_h(dwg, match, pos, style, is_final, is_rtl=is_rtl, no_connector=no_connector)
+        _match_h(dwg, match, pos, style, is_final, is_rtl=is_rtl, no_connector=no_connector,
+                 face_final=face_final)
 
 
 # ---------------------------------------------------------------------------
 # Horizontal (left_to_right) match
 # ---------------------------------------------------------------------------
 
-def _match_h(dwg, match, pos, style, is_final, is_rtl=False, no_connector=False):
+def _match_h(dwg, match, pos, style, is_final, is_rtl=False, no_connector=False, face_final=False):
     bw = style.box_width
     arm = style.arm_length
     conn_len = style.connector_length
@@ -210,7 +211,11 @@ def _match_h(dwg, match, pos, style, is_final, is_rtl=False, no_connector=False)
         line_start1 = box_edge
         line_start2 = box_edge
 
-    if not no_connector:
+    if face_final:
+        # face_to_face ファイナル:
+        # 水平橋渡し線 — 左SF結果と右SF結果を y=result_y で一直線に繋ぐ
+        _line(dwg, pos.x, pos.result_y, pos.conn_x, pos.result_y, vc_color, lw)
+    elif not no_connector:
         # arms: (name area start or box edge) → arm_x
         _line(dwg, line_start1, pos.y1, arm_x, pos.y1, t1_color, lw)
         _line(dwg, line_start2, pos.y2, arm_x, pos.y2, t2_color, lw,
@@ -221,7 +226,7 @@ def _match_h(dwg, match, pos, style, is_final, is_rtl=False, no_connector=False)
               dashed=match.is_bye)
 
     # result line → next round
-    if not is_final and not no_connector:
+    if not is_final and not no_connector and not face_final:
         rc = style.winner_color if (t1_win or t2_win) else style.line_color
         _line(dwg, arm_x, pos.result_y, result_end_x, pos.result_y, rc, lw)
 
