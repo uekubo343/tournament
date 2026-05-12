@@ -83,3 +83,29 @@ class TestTournamentBracketAPI:
         )
         assert tb._style.highlight_winner is True
         assert tb._style.winner_color == "#ff0000"
+
+    def test_line_style_box_width_でキャンバス幅が縮小する(self):
+        from tournament_maker.layout import compute_positions
+        from tournament_maker.seeding import build_bracket
+        from tournament_maker.style import StyleOptions
+
+        teams = ["A", "B", "C", "D", "E", "F", "G", "H"]
+        bracket = build_bracket(teams, seeds=None, format="single")
+
+        _, canvas_default = compute_positions(
+            bracket, StyleOptions(line_style=True), "left_to_right"
+        )
+        _, canvas_compact = compute_positions(
+            bracket, StyleOptions(line_style=True, line_style_box_width=0.0), "left_to_right"
+        )
+        assert canvas_compact.width < canvas_default.width
+
+    def test_line_style_box_width_でSVGが生成される(self):
+        os.makedirs(IMAGES_DIR, exist_ok=True)
+        path = os.path.join(IMAGES_DIR, "line_style_compact.svg")
+        TournamentBracket(teams=["A", "B", "C", "D", "E", "F", "G", "H"]).set_style(
+            line_style=True, line_style_box_width=0.0, highlight_winner=True
+        ).render(path)
+        with open(path, encoding="utf-8") as f:
+            svg = f.read()
+        assert "<svg" in svg

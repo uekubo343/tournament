@@ -40,6 +40,17 @@ def col_width(style: StyleOptions) -> float:
     return style.box_width + style.connector_length
 
 
+def _eff_box_width(style: StyleOptions, r_idx: int) -> float:
+    """line_style=True かつ r_idx>0 のとき line_style_box_width を返す。"""
+    if style.line_style and r_idx > 0 and style.line_style_box_width is not None:
+        return style.line_style_box_width
+    return style.box_width
+
+
+def _eff_col_width(style: StyleOptions, r_idx: int) -> float:
+    return _eff_box_width(style, r_idx) + style.connector_length
+
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
@@ -99,7 +110,6 @@ def _layout(
     style: StyleOptions,
     two_col: bool,
 ) -> tuple[dict[int, MatchPos], CanvasInfo]:
-    cw = col_width(style)
     h = style.slot_height
     px, py = style.padding_left, style.padding_top
     half_slots = bracket.total_slots // 2
@@ -130,14 +140,14 @@ def _layout(
 
         if bracket.grand_final:
             gf_col = max(len(bracket.winners_rounds), lb_col_count)
-            gf_x = px + gf_col * cw
+            gf_x = px + sum(_eff_col_width(style, r) for r in range(gf_col))
             wb_fin = positions[id(bracket.winners_rounds[-1][0])]
             lb_fin = positions[id(bracket.losers_rounds[-1][0])]
             gf_y1 = wb_fin.result_y
             gf_y2 = lb_fin.result_y
             positions[id(bracket.grand_final)] = MatchPos(
                 x=gf_x, y1=gf_y1, y2=gf_y2,
-                conn_x=gf_x + style.box_width,
+                conn_x=gf_x + _eff_box_width(style, gf_col),
                 result_y=(gf_y1 + gf_y2) / 2,
             )
 
@@ -148,7 +158,7 @@ def _layout(
                      len(bracket.losers_rounds) if bracket.losers_rounds else 0) + 1
     else:
         n_cols = wb_col_count
-    total_w = px + n_cols * cw + style.box_width
+    total_w = px + sum(_eff_col_width(style, r) for r in range(n_cols)) + style.box_width
     total_h = (py + wb_height
                + (style.wb_lb_gap + lb_height if bracket.format == "double" else 0)
                + py)
@@ -202,10 +212,10 @@ def _place_wb(
     half_slots: int,
     half_gap: float,
 ) -> None:
-    cw = col_width(style)
-
+    cum_x = x0
     for r_idx, round_matches in enumerate(rounds):
-        x = x0 + r_idx * cw
+        x = cum_x
+        bw = _eff_box_width(style, r_idx)
         for m_idx, match in enumerate(round_matches):
             if r_idx == 0:
                 y1, y2 = _match_ys(m_idx, y0, style, half_slots, half_gap)
@@ -217,9 +227,10 @@ def _place_wb(
 
             out[id(match)] = MatchPos(
                 x=x, y1=y1, y2=y2,
-                conn_x=x + style.box_width,
+                conn_x=x + bw,
                 result_y=(y1 + y2) / 2,
             )
+        cum_x += _eff_col_width(style, r_idx)
 
 
 # ---------------------------------------------------------------------------
@@ -233,25 +244,26 @@ def _place_lb(
     y0: float,
     style: StyleOptions,
 ) -> None:
-    cw = col_width(style)
     h = style.slot_height
 
     if not lb_rounds:
         return
 
     # Round 0: pair up evenly
-    first = lb_rounds[0]
-    for m_idx, match in enumerate(first):
+    bw0 = _eff_box_width(style, 0)
+    for m_idx, match in enumerate(lb_rounds[0]):
         y1 = y0 + m_idx * 2 * h + h / 2
         y2 = y0 + (m_idx * 2 + 1) * h + h / 2
         out[id(match)] = MatchPos(
             x=x0, y1=y1, y2=y2,
-            conn_x=x0 + style.box_width,
+            conn_x=x0 + bw0,
             result_y=(y1 + y2) / 2,
         )
 
+    cum_x = x0 + _eff_col_width(style, 0)
     for r_idx in range(1, len(lb_rounds)):
-        x = x0 + r_idx * cw
+        x = cum_x
+        bw = _eff_box_width(style, r_idx)
         prev = lb_rounds[r_idx - 1]
         curr = lb_rounds[r_idx]
 
@@ -269,9 +281,10 @@ def _place_lb(
 
             out[id(match)] = MatchPos(
                 x=x, y1=y1, y2=y2,
-                conn_x=x + style.box_width,
+                conn_x=x + bw,
                 result_y=(y1 + y2) / 2,
             )
+        cum_x += _eff_col_width(style, r_idx)
 
 
 # ---------------------------------------------------------------------------
@@ -287,16 +300,33 @@ def _layout_face_to_face(
     n = len(rounds)      # 総ラウンド数
     half = n - 1         # 片側のラウンド数（ファイナルを除く）
 
-    cw = col_width(style)
     h = style.slot_height
     px, py = style.padding_left, style.padding_top
     half_slots = bracket.total_slots // 2
 
     positions: dict[int, MatchPos] = {}
 
+    # --- 左側x位置を累積計算 ---
+    left_xs: list[float] = []
+    cum = px
+    for r in range(half):
+        left_xs.append(cum)
+        cum += _eff_col_width(style, r)
+    final_x = cum  # 左側全列幅の合計がファイナルのx
+
+    # --- 右側x位置を中央から外側へ計算 ---
+    # 右innermost(r_idx=half-1)の結果線がfinal.conn_xに繋がる
+    final_bw = style.box_width  # ファイナルは常にフルwidth（橋渡し線の長さを保つ）
+    right_xs: list[float] = [0.0] * half  # right_xs[r_idx]
+    if half > 0:
+        right_xs[half - 1] = final_x + final_bw + style.connector_length
+        for k in range(half - 2, -1, -1):
+            right_xs[k] = right_xs[k + 1] + _eff_col_width(style, k + 1)
+
     # --- 左側 (LTR) ---
     for r_idx in range(half):
-        x = px + r_idx * cw
+        x = left_xs[r_idx]
+        bw = _eff_box_width(style, r_idx)
         left_matches = rounds[r_idx][: len(rounds[r_idx]) // 2]
         for m_idx, match in enumerate(left_matches):
             if r_idx == 0:
@@ -309,20 +339,19 @@ def _layout_face_to_face(
                 y1, y2 = p1.result_y, p2.result_y
             positions[id(match)] = MatchPos(
                 x=x, y1=y1, y2=y2,
-                conn_x=x + style.box_width,
+                conn_x=x + bw,
                 result_y=(y1 + y2) / 2,
                 mirrored=False,
             )
 
-    # --- 右側 (RTL) --- 左側と同じ y 座標を使う（高さを揃える）
+    # --- 右側 (RTL): r_idx=0が最外列（最大x）、r_idx=half-1が中央寄り ---
     for r_idx in range(half):
-        # r_idx=0 が最外列（最大x）、r_idx=half-1 が中央寄り
-        right_col = 2 * half - r_idx
-        x = px + right_col * cw
+        x = right_xs[r_idx]
+        bw = _eff_box_width(style, r_idx)
         right_matches = rounds[r_idx][len(rounds[r_idx]) // 2 :]
         for m_idx, match in enumerate(right_matches):
             if r_idx == 0:
-                base = m_idx * 2  # 左側と同じスロットを使う（half_slots のオフセットなし）
+                base = m_idx * 2
                 y1 = py + base * h + h / 2
                 y2 = py + (base + 1) * h + h / 2
             else:
@@ -332,28 +361,25 @@ def _layout_face_to_face(
                 y1, y2 = p1.result_y, p2.result_y
             positions[id(match)] = MatchPos(
                 x=x, y1=y1, y2=y2,
-                conn_x=x + style.box_width,
+                conn_x=x + bw,
                 result_y=(y1 + y2) / 2,
                 mirrored=True,
             )
 
     # --- 中央ファイナル ---
-    # 左右の SF 結果は同じ y（center_y）に揃っている。
-    # ファイナルはその中心から ±h/2 の位置に 2 チームを配置し、
-    # 左右の結果線が center_y でちょうどボックス間のギャップに繋がる。
     final_match = rounds[n - 1][0]
-    final_x = px + half * cw
     left_feeder = positions[id(rounds[half - 1][0])]
-    center_y = left_feeder.result_y  # 左右 SF の result_y は同じ値
+    center_y = left_feeder.result_y
     y1 = center_y - h / 2
     y2 = center_y + h / 2
     positions[id(final_match)] = MatchPos(
         x=final_x, y1=y1, y2=y2,
-        conn_x=final_x + style.box_width,
+        conn_x=final_x + final_bw,
         result_y=center_y,
         mirrored=False,
     )
 
-    total_w = px + 2 * half * cw + style.box_width + px
-    total_h = py + half_slots * h + py  # 片側分の高さのみ
+    outermost_right_x = right_xs[0] if half > 0 else final_x
+    total_w = outermost_right_x + style.box_width + px
+    total_h = py + half_slots * h + py
     return positions, CanvasInfo(width=total_w, height=total_h)

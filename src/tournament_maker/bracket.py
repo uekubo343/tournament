@@ -4,6 +4,8 @@ from .seeding import build_bracket
 from .layout import compute_positions
 from .renderer import render, render_svg, render_png
 
+_UNSET = object()
+
 
 class TournamentBracket:
     """
@@ -79,6 +81,7 @@ class TournamentBracket:
         text_color: str | None = None,
         text_padding: float | None = None,
         line_style: bool | None = None,
+        line_style_box_width=_UNSET,
     ) -> "TournamentBracket":
         """Override style options. Returns self for chaining."""
         if highlight_winner is not None:
@@ -127,6 +130,8 @@ class TournamentBracket:
             self._style.text_padding = text_padding
         if line_style is not None:
             self._style.line_style = line_style
+        if line_style_box_width is not _UNSET:
+            self._style.line_style_box_width = line_style_box_width
         return self
 
     def set_round_labels(

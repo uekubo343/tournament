@@ -38,6 +38,8 @@ class StyleOptions:
 
     # Line style: チームボックスを描かず、勝者の線に色をつけるスタイル
     line_style: bool = False
+    # line_style=True のとき、2回戦以降の列で使うボックス幅（None=box_widthと同じ、0=ボックスなし）
+    line_style_box_width: float | None = None
 
     # Circle names
     circle_names: bool = False

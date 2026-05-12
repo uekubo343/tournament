@@ -11,7 +11,7 @@ os.makedirs(OUT, exist_ok=True)
 # ===========================================================================
 
 # --- チーム設定 ---
-TEAMS = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta"]
+TEAMS = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "1", "2", "3", "4", "5", "6", "7", "8",]
 # TEAMS = ["チームA", "チームB", "チームC", "チームD"]   # 日本語チーム名
 SEEDS = None
 # SEEDS = ["Alpha", "Beta"]   # 不戦勝チーム（チーム数が2の累乗でない場合）
@@ -20,13 +20,13 @@ FORMAT = "single"
 # FORMAT = "double"   # ダブルエリミネーション
 
 # --- レイアウト ---
-# DIRECTION = "left_to_right"
+DIRECTION = "left_to_right"
 # DIRECTION = "left_to_right_2col"
 # DIRECTION = "right_to_left"
 # DIRECTION = "top_to_bottom"
 # DIRECTION = "top_to_bottom_2col"
 # DIRECTION = "bottom_to_top"
-DIRECTION = "face_to_face"
+# DIRECTION = "face_to_face"
 
 # --- スタイル設定 ---
 STYLE = dict(
@@ -54,6 +54,12 @@ STYLE = dict(
     circle_color       = "#4a90d9",
 
     line_style         = True,   # Trueにするとボックスなし・勝者の線に色をつけるスタイル
+
+    # line_style=True のとき、2回戦以降の列で使うボックス幅
+    #   None  → デフォルト（box_widthと同じ、変化なし）
+    #   0.0   → 最小（arm_lengthのみ）
+    #   60.0  → 中間的な長さ
+    line_style_box_width = 10,
 )
 
 # --- ラウンドラベル（カスタムテキスト） ---
